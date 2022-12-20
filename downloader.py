@@ -25,19 +25,26 @@ def getAnimeUrl(titleName):
         return None
 
     # Search the content for Anime title and extract it's link
-    for title in titles:
-        for content in title:
-            try:
-                if titleName in content.get('title').lower():
-                    path = content.get('href')
-                    watchURL = f'https://gogoanime.bid{path}'
-                    return watchURL
+    try:
+        title = soup.find('p', {'class' : 'name'})
+        confirmation = input(f'\nIs this the Title you were searching for?: \n{title.get_text(strip=True)} \nY/N: ').lower()
 
-            except:
-                continue
-    
+        if confirmation == 'y':
+            path = title.a.get('href')
+            watchURL = f'https://gogoanime.bid{path}'
+            return watchURL
 
-    print("Is this what you mean? Y/N")    
+        else:
+            for title in titles:
+                for content in title:
+                    if titleName in content.get('title').lower():
+                        path = content.get('href')
+                        watchURL = f'https://gogoanime.bid{path}'
+                        return watchURL
+
+                    continue
+    except:
+        pass
     
     print("Couldn't Find title. Check spellings and please try again!")
     return None
@@ -69,14 +76,22 @@ def downloadEpisode(number, url):
     episodePath = url.split(sep='/')
     url = f'https://gogoanime.bid/{episodePath[-1]}-episode-{number}'
 
-    print(url)
+    try:
+        soup = getWebpage(url)
+    except Exception as e:
+        print(e)
+        return None
+
+    downloadUrl = soup.find_all('li', {'class' : 'downloads'})
+    print(downloadUrl)
+
 
 # Main function of the program
 def main():
     animeName = input("Enter Anime Name: ").lower()
     animeUrl = getAnimeUrl(animeName)
     if animeUrl is not None: episodes = getNumberofEpisodes(animeUrl)
-    episodeToDownload = input("Enter Episode number to download: ")
+    episodeToDownload = input(f"\nEnter Episode number to download: (0 - {episodes}): ")
     downloadEpisode(episodeToDownload, animeUrl)
 
 if __name__ == "__main__":
