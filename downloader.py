@@ -1,7 +1,25 @@
-import requests
+import requests, progressbar, urllib
 from bs4 import BeautifulSoup
+from requests_html import HTMLSession
 
 # THIS PROJECT IS JUST TO SCRAPE ZORO.TO AND DOWNLOAD ANIME USING IT
+SESSION = HTMLSession()
+
+# Add a progress bar to the downloads
+class MyProgressBar():
+    def __init__(self):
+        self.pbar = None
+
+    def __call__(self, block_num, block_size, total_size):
+        if not self.pbar:
+            self.pbar=progressbar.ProgressBar(maxval=total_size)
+            self.pbar.start()
+
+        downloaded = block_num * block_size
+        if downloaded < total_size:
+            self.pbar.update(downloaded)
+        else:
+            self.pbar.finish()
 
 # Make a request and get the return the HTML content of a webpage
 def getWebpage(url):
@@ -72,27 +90,55 @@ def getNumberofEpisodes(watchUrl):
 
     return episodes
 
-def downloadEpisode(number, url):
+def getDownloadUrl(number, url):
     episodePath = url.split(sep='/')
-    url = f'https://gogoanime.bid/{episodePath[-1]}-episode-{number}'
+    ep_url = f'https://gogoanime.bid/{episodePath[-1]}-episode-{number}'
 
     try:
-        soup = getWebpage(url)
-    except Exception as e:
-        print(e)
-        return None
+        # r = session.get(url)
+        r = SESSION.get(ep_url)
 
-    downloadUrl = soup.find_all('li', {'class' : 'downloads'})
-    print(downloadUrl)
+        for link in r.html.links:
+            if 'download' in link:
+                if str(number) in link:    
+                    return link
 
+    except:
+        pass
+
+    return None
+
+
+def downloadEpisode(number, url):
+    title = url.split(sep='=')[-1].split(sep='+')
+    filename = ''
+
+    for word in title:
+        filename = filename + word + '.'
+    filename = filename[:-1]
+
+    try:
+        r = SESSION.get(url)
+
+        print(r)
+
+    except:
+        pass
+
+    return None
 
 # Main function of the program
 def main():
     animeName = input("Enter Anime Name: ").lower()
     animeUrl = getAnimeUrl(animeName)
-    if animeUrl is not None: episodes = getNumberofEpisodes(animeUrl)
-    episodeToDownload = input(f"\nEnter Episode number to download: (0 - {episodes}): ")
-    downloadEpisode(episodeToDownload, animeUrl)
+
+    if animeUrl is not None: 
+        episodes = getNumberofEpisodes(animeUrl)
+        episodeToDownload = input(f"\nEnter Episode number to download: (0 - {episodes}): ")
+        downloadUrl = getDownloadUrl(episodeToDownload, animeUrl)
+        
+        if downloadUrl is not None:
+            downloadEpisode(episodeToDownload, downloadUrl)
 
 if __name__ == "__main__":
     main()
