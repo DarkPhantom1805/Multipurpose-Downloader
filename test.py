@@ -1,30 +1,19 @@
 import requests
+from bs4 import BeautifulSoup
+import m3u8
+from alive_progress import alive_bar
 
-cookies = {
-    'tvshow': 'mdlcem1r494ukm3se32e843fu2',
-    'token': '63a38cc315e85',
-}
 
-headers = {
-    'authority': 'gogohd.pro',
-    'accept': '*/*',
-    'accept-language': 'en-GB,en-US;q=0.9,en;q=0.8',
-    # 'cookie': 'tvshow=mdlcem1r494ukm3se32e843fu2; token=63a38cc315e85',
-    'referer': 'https://gogohd.pro/download?id=MTkzNTU3&typesub=Gogoanime-SUB&title=Chainsaw+Man+Episode+1',
-    'sec-ch-ua': '"Not?A_Brand";v="8", "Chromium";v="108", "Google Chrome";v="108"',
-    'sec-ch-ua-mobile': '?0',
-    'sec-ch-ua-platform': '"Windows"',
-    'sec-fetch-dest': 'empty',
-    'sec-fetch-mode': 'cors',
-    'sec-fetch-site': 'same-origin',
-    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
-}
+# url = 'https://wwwx18.gofcdn.com/videos/hls/u_1HTbWGUrqwoAvIZxDaEA/1671764760/193557/14a369cc45ca9c73d70872708160af7d/'
+# m3u8_file = 'ep.1.1665506470.360.m3u8'
 
-params = {
-    'id': 'MTkzNTU3',
-    'typesub': 'Gogoanime-SUB',
-    'title': 'Chainsaw Man Episode 1',
-}
-
-response = requests.head('https://gogohd.pro/download', params=params, cookies=cookies, headers=headers)
-print(response.text)
+# r = requests.get(url + m3u8_file)
+# m3u8_master = m3u8.loads(r.text)
+# segments = m3u8_master.data['segments']
+# for segment in segments:
+#     print(segment)
+# with open('video.mp4', 'wb') as f:
+#     for segment in segments:
+#         uri = segment['uri']
+#         r = requests.get(url + uri)
+#         f.write(r.content)
