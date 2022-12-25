@@ -1,144 +1,201 @@
-import requests, progressbar
+import requests, m3u8
 from bs4 import BeautifulSoup
-from requests_html import HTMLSession
+import webbrowser
+import pyautogui as pag
+from time import sleep
+import os
+import shutil
+from io import BytesIO
+import quopri
+import time
+from alive_progress import alive_bar
 
-# THIS PROJECT IS JUST TO SCRAPE ZORO.TO AND DOWNLOAD ANIME USING IT
-SESSION = HTMLSession()
+URL = 'https://gogoanime.bid'
+SEARCH_PATH = '/search.html?keyword='
+EPISODE_LIST_URL = 'https://ajax.gogo-load.com/ajax/load-list-episode'
 
-# Add a progress bar to the downloads
-class MyProgressBar():
-    def __init__(self):
-        self.pbar = None
+def get_direct_download_links(URL):
+    path = os.getcwd() + '\html'
 
-    def __call__(self, block_num, block_size, total_size):
-        if not self.pbar:
-            self.pbar=progressbar.ProgressBar(maxval=total_size)
-            self.pbar.start()
+    def open_close(url):
+        os.makedirs(path)
 
-        downloaded = block_num * block_size
-        if downloaded < total_size:
-            self.pbar.update(downloaded)
-        else:
-            self.pbar.finish()
+        webbrowser.open(url)
+        sleep(4)
+        pag.hotkey('ctrl', 's')
+        sleep(1)
+        pag.typewrite('download_page.mhtml')
+        pag.press('tab', presses=6, interval=0.1)
+        pag.press('enter')
+        pag.typewrite(path)
+        pag.press('enter', presses=4, interval=0.1)
+        while not os.path.exists(path + '\download_page.mhtml'):
+            time.sleep(1)
 
-# Make a request and get the return the HTML content of a webpage
-def getWebpage(url):
-    r = requests.get(url)
-    return BeautifulSoup(r.content, 'html.parser') 
+            if not os.path.isfile(path + '\download_page.mhtml'):
+               time.sleep(1)
+            else:
+                break
 
-# Search the title and get it's Page Url
-def getAnimeUrl(titleName):
+        pag.hotkey('ctrl', 'w')
+        pag.hotkey('alt', 'tab')
 
-    # Turn Anime name into Url path
-    keyword = titleName.replace(' ', '%20')
-    SearchURL = f'https://gogoanime.bid/search.html?keyword={keyword}'
 
-    # Get the HTML contents of the website and seperate the useful content (Anime title and Links) 
-    try:    
-        soup = getWebpage(SearchURL)
-        titles = soup.findAll('p', {'class' : 'name'},  limit=None)
+    def delete_file():
+        shutil.rmtree(path, ignore_errors=True)
 
-    except Exception as e:
-        print(e)
-        return None
+    def convert_mhtml_to_html():
 
-    # Search the content for Anime title and extract it's link
-    try:
-        title = soup.find('p', {'class' : 'name'})
-        confirmation = input(f'\nIs this the Title you were searching for?: \n{title.get_text(strip=True)} \nY/N: ').lower()
+        with open('html\download_page.mhtml', 'r', encoding='utf8') as f:
+            content = f.read()
+            inputFile = BytesIO((content).encode('utf-8'))
+            outputFile = BytesIO()
 
-        if confirmation == 'y':
-            path = title.a.get('href')
-            watchURL = f'https://gogoanime.bid{path}'
-            return watchURL
+            quopri.decode(inputFile, outputFile)
 
-        else:
-            for title in titles:
-                for content in title:
-                    if titleName in content.get('title').lower():
-                        path = content.get('href')
-                        watchURL = f'https://gogoanime.bid{path}'
-                        return watchURL
+        os.rename(path + '\download_page.mhtml', path + '\download_page.html')
 
-                    continue
-    except:
-        pass
+        with open("html\download_page.html", "wb") as f:
+            f.write(outputFile.getbuffer())        
     
-    print("Couldn't Find title. Check spellings and please try again!")
-    return None
+    def get_direct_links():
+        links = []
+        try:
+            with open('html\download_page.html', 'r', encoding='utf8') as f:
+                soup = BeautifulSoup(f, 'html.parser')
+        except:
+            with open('html\download_page.html', 'r', encoding='latin-1') as f:
+                soup = BeautifulSoup(f, 'html.parser')
 
-# Get the direct download links from the Web page
-def getNumberofEpisodes(watchUrl):
-    episodes = 0
+        tags = soup.find_all('a', {'download' : ''})
 
-    # Send a request to the Anime's page on the website
-    try:
-        soup = getWebpage(watchUrl)
-        # print(soup.prettify())
-
-    except Exception as e:
-        print(f"Unexpected Error {e}. Please try again!")
-        return None
-
-    episodeData = soup.find_all(id='episode_page')
-    
-    # Extract the number of episodes 
-    for tag in episodeData:
-        for a in tag.find_all('a'):
-            for number in a.get_text().split(sep='-'):
-                if int(number) >= episodes: episodes = int(number)
-
-    return episodes
-
-def getDownloadUrl(number, url):
-    episodePath = url.split(sep='/')
-    ep_url = f'https://gogoanime.bid/{episodePath[-1]}-episode-{number}'
-
-    try:
-        # r = session.get(url)
-        r = SESSION.get(ep_url)
-
-        for link in r.html.links:
-            if 'download' in link:
-                if str(number) in link:    
-                    return link
-
-    except:
-        pass
-
-    return None
-
-
-def downloadEpisode(number, url):
-    title = url.split(sep='=')[-1].split(sep='+')
-    filename = ''
-
-    for word in title:
-        filename = filename + word + '.'
-    filename = filename[:-1]
-
-    try:
-        r = SESSION.get(url)
-
-        print(r)
-
-    except:
-        pass
-
-    return None
-
-# Main function of the program
-def main():
-    animeName = input("Enter Anime Name: ").lower()
-    animeUrl = getAnimeUrl(animeName)
-
-    if animeUrl is not None: 
-        episodes = getNumberofEpisodes(animeUrl)
-        episodeToDownload = input(f"\nEnter Episode number to download: (0 - {episodes}): ")
-        downloadUrl = getDownloadUrl(episodeToDownload, animeUrl)
+        for tag in tags:
+            if '360' in tag.get_text(strip=True).lower():
+                links.append({
+                    'link' : tag.get('href'),
+                    'quality' : '360'
+            })
+            elif '480' in tag.get_text(strip=True).lower():
+                links.append({
+                    'link' : tag.get('href'),
+                    'quality' : 480
+            })
+            elif '720' in tag.get_text(strip=True).lower():
+                links.append({
+                    'link' : tag.get('href'),
+                    'quality' : 720
+            })
+            elif '1080' in tag.get_text(strip=True).lower():
+                links.append({
+                    'link' : tag.get('href'),
+                    'quality' : 1080
+            })
         
-        if downloadUrl is not None:
-            downloadEpisode(episodeToDownload, downloadUrl)
+        return links
 
-if __name__ == "__main__":
-    main()
+    delete_file()
+    open_close(URL)
+    convert_mhtml_to_html()
+    links = get_direct_links()    
+    delete_file()
+    return links
+
+while True:
+    NAME = input("\nEnter the name of the Anime: ").lower()
+    keyword = NAME.strip().replace(' ', '%20')
+
+    r = requests.get(URL + SEARCH_PATH + keyword)
+    soup = BeautifulSoup(r.content, 'html.parser')
+
+    tags = soup.find_all('p', {'class'    : 'name'})
+
+    choose_anime_string = """
+Search Results:"""
+
+    for count in range(0, len(tags)):
+        choose_anime_string += '\n' + str(count + 1) + '. ' + tags[count].get_text(strip=True)
+
+    choose_anime_string += '\nSelect One or Enter -1 to search again: '
+    num = int(input(choose_anime_string))
+
+    if num != -1: break
+
+TITLE_PATH = tags[num-1].a.get('href')
+
+r = requests.get(URL + TITLE_PATH)
+soup = BeautifulSoup(r.content, 'html.parser')
+
+type = soup.find('p', {'class' : 'type'}).get_text(strip=True)
+
+if 'movie' in type.lower():
+    start_ep = 1
+    end_ep = 0
+
+else:
+
+    TOTAL_EPISODES = 0
+
+    tags = soup.findAll(id="episode_page")
+    for child in tags[0].descendants:
+        if child.name == 'a':
+            num_eps = int(child.get('ep_end'))
+            if num_eps > TOTAL_EPISODES:
+                TOTAL_EPISODES = num_eps
+
+    start_ep = int(input(f"Enter Episode Number (1 - {str(TOTAL_EPISODES)}) : "))
+    end_ep = start_ep
+
+anime_id = soup.find(id='movie_id').get('value')
+EPISODE_LIST_PARAMS = f'?ep_start={start_ep}&ep_end={end_ep}&id={anime_id}'
+
+r = requests.get(EPISODE_LIST_URL + EPISODE_LIST_PARAMS)
+soup = BeautifulSoup(r.content, 'html.parser')
+
+tags =  soup.find_all('a')
+
+EPISODE_PATHS = []
+
+for child in tags:
+    EPISODE_PATHS.append(child.get('href').strip())
+
+
+for path in EPISODE_PATHS:
+    r = requests.get(URL + path)
+    soup = BeautifulSoup(r.content, 'html.parser')
+    link = soup.find('li', {'class' : 'dowloads'}).a.get('href')
+    
+direct_links = get_direct_download_links(link)
+
+def choose_quality(links):
+    choose_quality_string = """
+Available Qualities:"""
+
+    for count in range(0, len(links)):
+        choose_quality_string += '\n' + str(count + 1) + '. ' + str(links[count].get('quality')) + 'p'
+
+    choose_quality_string += '\nSelect One: '
+    return int(input(choose_quality_string))
+
+quality = choose_quality(direct_links)
+
+def download(quality, links):
+    URL = links[quality - 1].get('link')
+
+    x = requests.head(URL)
+    y = requests.head(x.headers['Location'])
+
+    file_size = int(int(y.headers['content-length']) / 1024)
+    chunk_size = 1024
+
+    def compute():
+        response = requests.get(URL, stream=True)
+        with open('video.mp4', 'wb') as f:
+            for chunk in response.iter_content(chunk_size=chunk_size):
+                f.write(chunk)
+                yield 1024
+
+    with alive_bar(file_size, bar='classic2', spinner='classic') as bar:
+        for i in compute():
+            bar()
+
+download(quality, direct_links)
