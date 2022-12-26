@@ -78,15 +78,15 @@ def get_episodes(path):
 1. Download Single Episode
 2. Download Multiple Episodes
 
-Select One: """))
+Choose an option: """))
 
             if num == 1:
                 start_ep = 0
-                end_ep = int(input("Enter episode number: "))
+                end_ep = int(input("\nEnter episode number: "))
             
             elif num == 2:
                 start_ep = int(input("\nEnter Starting Episode: "))
-                end_ep = int(input("\nEnter Ending Episode: "))
+                end_ep = int(input("Enter Ending Episode: "))
 
         else:
             start_ep = end_ep = 1
@@ -106,7 +106,7 @@ def get_download_links(mode, params):
         soup = get_html(URL + tags[0].get('href').strip())
         link = soup.find('li', {'class' : 'dowloads'}).a.get('href')
 
-        return len(links), [link]
+        return [link]
     
     if mode == 2:
         for tag in tags:
@@ -132,14 +132,13 @@ def get_direct_download_links(links):
         pag.press('enter')
         pag.typewrite(path)
         pag.press('enter', presses=4, interval=0.1)
-        while not os.path.exists(path + '\download_page.mhtml'):
-            sleep(1)
 
+        while not os.path.exists(path + '\download_page.mhtml'):
             if not os.path.isfile(path + '\download_page.mhtml'):
                 sleep(1)
             else:
                 break
-
+        sleep(1)
         pag.hotkey('ctrl', 'w')
         pag.hotkey('alt', 'tab')
 
@@ -231,13 +230,12 @@ Select a Quality: """
 
 def download(quality, titles):
     qualities = [360, 480, 720, 1080]
-    curr_dir = os.getcwd() 
-    count = len(titles)
     completed = 0
 
-    anime_name = " ".join(titles[0].get('name').split(sep=' ')[:-2])
-    path = curr_dir + '\\' + anime_name
-    os.makedirs(path)
+    curr_dir = os.getcwd() 
+    anime_name = " ".join(titles[0].get('name').split(sep='.')[:-2])
+    new_path = curr_dir + '\\' + anime_name
+    os.mkdir(new_path)
 
     for title in titles:
         os.system('cls')
@@ -251,16 +249,16 @@ def download(quality, titles):
         x = requests.head(url)
         y = requests.head(x.headers['Location'])
 
-        file_size = int(int(y.headers['content-length']) / 1048576)
+        file_size = int(int(y.headers['content-length']) / 1024)
         chunk_size = 1024
 
         def compute():
             response = requests.get(url, stream=True)
 
-            with open(path + '\\' + title.get('name') + '.mp4', 'wb') as f:
+            with open(new_path + '\\' + title.get('name') + '.mp4', 'wb') as f:
                 for chunk in response.iter_content(chunk_size=chunk_size):
                     f.write(chunk)
-                    yield 1
+                    yield 1024
 
         with alive_bar(file_size, bar='classic2', spinner='classic') as bar:
             for i in compute():
